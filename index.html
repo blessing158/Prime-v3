@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PRIME v3</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: Arial, sans-serif;
+}
+
+body {
+  background: #000;
+  color: #fff;
+  overflow: hidden;
+}
+
+/* HEADER */
+header {
+  position: fixed;
+  top: 0;
+  width: 100%;
+  height: 55px;
+  background: #0a0a0a;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 15px;
+  border-bottom: 1px solid #222;
+  z-index: 10;
+}
+
+.logo {
+  font-weight: bold;
+  font-size: 18px;
+  color: #00ffe5;
+}
+
+.menu {
+  font-size: 22px;
+  cursor: pointer;
+}
+
+/* CHAT */
+#chat {
+  position: absolute;
+  top: 55px;
+  bottom: 60px;
+  width: 100%;
+  overflow-y: auto;
+  padding: 10px;
+}
+
+.msg {
+  max-width: 80%;
+  margin: 8px;
+  padding: 10px;
+  border-radius: 10px;
+  font-size: 14px;
+}
+
+.user { background: #1e1e1e; margin-left: auto; }
+.ai { background: #003b3b; margin-right: auto; }
+
+/* INPUT */
+#inputBar {
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  display: flex;
+  padding: 8px;
+  background: #0a0a0a;
+  border-top: 1px solid #222;
+}
+
+#text {
+  flex: 1;
+  padding: 10px;
+  border-radius: 20px;
+  border: none;
+  outline: none;
+  background: #1a1a1a;
+  color: white;
+}
+
+button {
+  width: 45px;
+  height: 45px;
+  margin-left: 8px;
+  border-radius: 50%;
+  border: none;
+  background: #00ffe5;
+  cursor: pointer;
+}
+
+/* SETTINGS */
+#settings {
+  position: fixed;
+  top: 55px;
+  right: 10px;
+  width: 240px;
+  background: #111;
+  border: 1px solid #333;
+  display: none;
+  flex-direction: column;
+  z-index: 20;
+}
+
+#settings button {
+  width: 100%;
+  border-radius: 0;
+  background: transparent;
+  color: white;
+  border-bottom: 1px solid #222;
+  padding: 10px;
+}
+
+/* 3D */
+#scene3d {
+  display: none;
+  position: absolute;
+  top: 55px;
+  width: 100%;
+  height: calc(100% - 55px);
+}
+</style>
+</head>
+
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">PRIME v3</div>
+  <div class="menu" onclick="toggleSettings()">⋮</div>
+</header>
+
+<!-- SETTINGS -->
+<div id="settings">
+  <button onclick="toggle3D()">Toggle 3D Workspace</button>
+  <button onclick="resetWorld()">Reset 3D Build</button>
+  <button onclick="showAbout()">About PRIME</button>
+</div>
+
+<!-- CHAT -->
+<div id="chat"></div>
+
+<!-- 3D -->
+<div id="scene3d"></div>
+
+<!-- INPUT -->
+<div id="inputBar">
+  <input id="text" placeholder="Message PRIME..." />
+  <button onclick="send()">➤</button>
+</div>
+
+<script>
+let is3D = false;
+
+/* SETTINGS */
+function toggleSettings(){
+  let s = document.getElementById("settings");
+  s.style.display = s.style.display === "flex" ? "none" : "flex";
+}
+
+/* CHAT */
+function addMsg(text, type){
+  let div = document.createElement("div");
+  div.className = "msg " + type;
+  div.innerText = text;
+  document.getElementById("chat").appendChild(div);
+  document.getElementById("chat").scrollTop = 999999;
+}
+
+function send(){
+  let input = document.getElementById("text");
+  let msg = input.value;
+  if(!msg) return;
+
+  addMsg(msg, "user");
+  input.value = "";
+
+  setTimeout(() => {
+    addMsg(brain(msg), "ai");
+  }, 400);
+}
+
+/* OFFLINE BRAIN */
+function brain(msg){
+  msg = msg.toLowerCase();
+
+  if(msg.includes("hello")) return "PRIME: Online.";
+  if(msg.includes("who")) return "PRIME: Offline AI system v3.";
+  if(msg.includes("3d")) return "PRIME: 3D workspace active.";
+  if(msg.includes("help")) return "PRIME: chat, build, edit 3D world.";
+
+  return "PRIME: processing offline input...";
+}
+
+/* ABOUT */
+function showAbout(){
+  alert(
+`PRIME v3 SYSTEM
+
+Created by: Blessing Masedi
+Year: 2026
+
+Description:
+PRIME is an offline intelligent interface designed for:
+- AI chat interaction
+- 3D workspace creation
+- Experimental simulation systems
+- Future AI expansion (voice, memory, API-ready architecture)
+
+Status: Prototype v3 (Offline Build)`
+  );
+}
+
+/* RESET */
+function resetWorld(){
+  blocks.forEach(b => scene.remove(b));
+  blocks = [];
+  buildInitialWorld();
+}
+
+/* =======================
+   3D WORKSPACE (UPGRADED)
+======================= */
+
+let scene, camera, renderer, raycaster, mouse;
+let blocks = [];
+
+function init3D(){
+  scene = new THREE.Scene();
+
+  camera = new THREE.PerspectiveCamera(
+    75,
+    window.innerWidth / window.innerHeight,
+    0.1,
+    1000
+  );
+
+  renderer = new THREE.WebGLRenderer();
+  renderer.setSize(window.innerWidth, window.innerHeight - 55);
+  document.getElementById("scene3d").appendChild(renderer.domElement);
+
+  raycaster = new THREE.Raycaster();
+  mouse = new THREE.Vector2();
+
+  camera.position.set(3, 3, 6);
+  camera.lookAt(0, 0, 0);
+
+  buildInitialWorld();
+
+  window.addEventListener("click", onClick3D);
+
+  animate();
+}
+
+/* CREATE GRID CUBES */
+function buildInitialWorld(){
+  let size = 3;
+
+  for(let x=0; x<size; x++){
+    for(let y=0; y<size; y++){
+      for(let z=0; z<size; z++){
+
+        let geo = new THREE.BoxGeometry(1,1,1);
+        let mat = new THREE.MeshBasicMaterial({
+          color: 0x00ffe5,
+          wireframe: true
+        });
+
+        let cube = new THREE.Mesh(geo, mat);
+        cube.position.set(x-1, y-1, z-1);
+
+        scene.add(cube);
+        blocks.push(cube);
+      }
+    }
+  }
+}
+
+/* CLICK TO EDIT WORLD */
+function onClick3D(event){
+  if(!is3D) return;
+
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / (window.innerHeight - 55)) * 2 + 1;
+
+  raycaster.setFromCamera(mouse, camera);
+
+  let hits = raycaster.intersectObjects(blocks);
+
+  if(hits.length > 0){
+    let target = hits[0].object;
+
+    /* SHIFT = ADD BLOCK */
+    if(event.shiftKey){
+      let geo = new THREE.BoxGeometry(1,1,1);
+      let mat = new THREE.MeshBasicMaterial({
+        color: 0x00ffe5,
+        wireframe: true
+      });
+
+      let newCube = new THREE.Mesh(geo, mat);
+      newCube.position.copy(target.position.clone().add(new THREE.Vector3(1,0,0)));
+
+      scene.add(newCube);
+      blocks.push(newCube);
+    }
+
+    /* NORMAL CLICK = REMOVE BLOCK */
+    else {
+      scene.remove(target);
+      blocks = blocks.filter(b => b !== target);
+    }
+  }
+}
+
+/* ANIMATION LOOP */
+function animate(){
+  requestAnimationFrame(animate);
+  renderer.render(scene, camera);
+}
+
+/* TOGGLE 3D */
+function toggle3D(){
+  is3D = !is3D;
+
+  let chat = document.getElementById("chat");
+  let sceneDiv = document.getElementById("scene3d");
+
+  if(is3D){
+    chat.style.display = "none";
+    sceneDiv.style.display = "block";
+    if(!scene) init3D();
+  } else {
+    chat.style.display = "block";
+    sceneDiv.style.display = "none";
+  }
+}
+</script>
+
+</body>
+</html>
